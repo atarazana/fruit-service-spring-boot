@@ -33,7 +33,7 @@ oc label dc/postgresql-db app.kubernetes.io/part-of=fruit-service-app --overwrit
 oc label dc/postgresql-db app.openshift.io/runtime=postgresql --overwrite=true -n ${DEV_PROJECT}
 
 3.4 Add -> From Git
-    Git Repo URL: https://github.com/atarazana/fruit-service-spring-boot dir: apps/spring-boot-app
+    Git Repo URL: https://github.com/atarazana/fruit-service-spring-boot
     Java 11
     General Application: fruit-service-app 
     Name: fruit-service-git <===
@@ -179,7 +179,7 @@ oc start-build bc/fruit-service-pipeline-complex \
 # KNative
 
 x.1 Add -> From Git
-    Git Repo URL: https://github.com/atarazana/fruit-service-spring-boot dir: apps/spring-boot-app
+    Git Repo URL: https://github.com/atarazana/fruit-service-spring-boot
     Java 11
     General Application: fruit-service-app 
     Name: fruit-service-kn <===
