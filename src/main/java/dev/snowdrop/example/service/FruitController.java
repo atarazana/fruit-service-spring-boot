@@ -19,6 +19,9 @@ package dev.snowdrop.example.service;
 import dev.snowdrop.example.exception.NotFoundException;
 import dev.snowdrop.example.exception.UnprocessableEntityException;
 import dev.snowdrop.example.exception.UnsupportedMediaTypeException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,6 +47,10 @@ import io.micrometer.core.instrument.Metrics;
 @RequestMapping(value = "/api/fruits")
 public class FruitController {
 
+    private static final String FORCED_INTERNAL_ERROR = "FORCED INTERNAL ERROR";
+
+    private static final Logger LOG = LoggerFactory.getLogger(FruitController.class);
+    
     private final FruitRepository repository;
 
     public FruitController(FruitRepository repository) {
@@ -153,6 +160,7 @@ public class FruitController {
     }
 
     private void throwInternalServerError() throws ResponseStatusException {
+        LOG.error(FORCED_INTERNAL_ERROR);
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
@@ -161,6 +169,7 @@ public class FruitController {
     }
 
     private void timeOut() {
+        LOG.info("DELAY OF " + SetupController.getDelayInMilliseconds() + " WAS ADDED");
         try {
 			TimeUnit.MILLISECONDS.sleep(SetupController.getDelayInMilliseconds());
 		} catch (InterruptedException e) {
