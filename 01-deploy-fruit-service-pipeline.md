@@ -79,10 +79,11 @@ oc label dc/jenkins app.openshift.io/runtime=jenkins --overwrite=true -n ${DEV_P
 ```sh
 oc project ${DEV_PROJECT}
 mvn clean oc:deploy -DskipTests -Popenshift-postgresql
-oc label dc/fruit-service-dev app.kubernetes.io/part-of=fruit-service-app --overwrite=true -n ${DEV_PROJECT} && \
-oc label dc/fruit-service-dev app.openshift.io/runtime=spring --overwrite=true -n ${DEV_PROJECT} && \
-oc annotate dc/fruit-service-dev app.openshift.io/connects-to=postgresql-db --overwrite=true -n ${DEV_PROJECT} 
 ```
+
+#oc label dc/fruit-service-dev app.kubernetes.io/part-of=fruit-service-app --overwrite=true -n ${DEV_PROJECT} && \
+#oc label dc/fruit-service-dev app.openshift.io/runtime=spring --overwrite=true -n ${DEV_PROJECT} && \
+#oc annotate dc/fruit-service-dev app.openshift.io/connects-to=postgresql-db --overwrite=true -n ${DEV_PROJECT} 
 
 ## COMPLETE PIPELINE
 
@@ -186,10 +187,11 @@ x.1 Add -> From Git
     Click on BuildConfig <=== We need to do this because we have two different openshift profiles for oracle and postgresql
     - MAVEN_ARGS: -Popenshift-postgresql
     Click on labels
-    - app=fruit-service-git
+    - app=fruit-service-kn
     - version=1.0.0
 
-
+oc label ksvc/fruit-service-kn app.openshift.io/runtime=spring --overwrite=true -n ${DEV_PROJECT} && \
+oc annotate ksvc/fruit-service-kn app.openshift.io/connects-to=postgresql-db --overwrite=true -n ${DEV_PROJECT}
 
 # Troubleshooting Pipelines
 

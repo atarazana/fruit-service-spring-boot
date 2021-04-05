@@ -6,8 +6,8 @@
 * Service Mesh Control Plane deployed
 
 ```sh
-export DEV_PROJECT=fruit-service-dev
-export TEST_PROJECT=fruit-service-test
+export DEV_PROJECT=fruits-dev
+export TEST_PROJECT=fruits-test
 export SMCP_PROJECT=fruit-smcp
 export VIRTUAL_SERVICE_NAME=fruit-service-git
 export DESTINATION_RULE_NAME=fruit-service-git
@@ -19,45 +19,40 @@ export DESTINATION_RULE_NAME=fruit-service-git
 oc new-project ${SMCP_PROJECT}
 
 cat << EOF | oc -n ${SMCP_PROJECT} apply -f -
-apiVersion: maistra.io/v1
+apiVersion: maistra.io/v2
 kind: ServiceMeshControlPlane
 metadata:
-  name: basic-install
+  name: basic
 spec:
-  version: v1.1
-  istio:
-    gateways:
-      istio-egressgateway:
-        autoscaleEnabled: false
-      istio-ingressgateway:
-        autoscaleEnabled: false
-        ior_enabled: false
-    mixer:
-      policy:
-        autoscaleEnabled: false
-      telemetry:
-        autoscaleEnabled: false
-    pilot:
-      autoscaleEnabled: false
-      traceSampling: 100
-    kiali:
-      enabled: true
+  addons:
     grafana:
       enabled: true
-    tracing:
+    jaeger:
+      install:
+        storage:
+          type: Memory
+    kiali:
       enabled: true
-      jaeger:
-        template: all-in-one
+    prometheus:
+      enabled: true
+  policy:
+    type: Istiod
+  telemetry:
+    type: Istiod
+  tracing:
+    sampling: 10000
+    type: Jaeger
+  version: v2.0
 EOF
 ```
 
-Check estatus until you get STATUS === UpdateSuccessful
+Check status until you get STATUS === UpdateSuccessful
 
 > OUTPUT: 
 >
 > ```
 > NAME            READY   STATUS             TEMPLATE   VERSION   AGE
-> basic-install   9/9     UpdateSuccessful   default    v1.1      7d17h
+> basic   9/9     ComponentsReady   ["default"]   2.0.2     119s
 > ```
 
 ```sh
@@ -97,9 +92,9 @@ OpenShift Service Mesh requires that applications "opt-in" to being part of a se
 First, do the databases and wait for them to be re-deployed:
 
 ```sh
-oc patch dc/my-database -n ${DEV_PROJECT} --type='json' -p '[{"op":"add","path":"/spec/template/metadata/annotations", "value": {"sidecar.istio.io/inject": "'"true"'"}}]'
-oc rollout latest dc/my-database -n ${DEV_PROJECT} && \
-oc rollout status -w dc/my-database -n ${DEV_PROJECT}
+oc patch dc/postgresql-db -n ${DEV_PROJECT} --type='json' -p '[{"op":"add","path":"/spec/template/metadata/annotations", "value": {"sidecar.istio.io/inject": "'"true"'"}}]'
+oc rollout latest dc/postgresql-db -n ${DEV_PROJECT} && \
+oc rollout status -w dc/postgresql-db -n ${DEV_PROJECT}
 ```
 
 This should take about 1 minute to finish.
@@ -121,8 +116,8 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    app.openshift.io/vcs-ref: master
-    app.openshift.io/vcs-uri: https://github.com/cvicens/spring-boot-fruit-service
+    app.openshift.io/vcs-ref: ''
+    app.openshift.io/vcs-uri: 'https://github.com/redhat-scholars/java-inner-loop-dev-guide'
     openshift.io/generated-by: OpenShiftWebConsole
   labels:
     app: fruit-service-git
@@ -131,7 +126,7 @@ metadata:
     app.kubernetes.io/name: java
     app.kubernetes.io/part-of: fruit-service-app
     app.openshift.io/runtime: java
-    app.openshift.io/runtime-version: "8"
+    app.openshift.io/runtime-version: openjdk-11-el7
     version: 1.0.0
   name: fruit-service-git
   namespace: ${DEV_PROJECT}
@@ -184,7 +179,7 @@ EOF
 ## Virtual Service
 
 ```sh
-export INGRESS_ROUTE_HOST=$(oc get route/istio-ingressgateway -o json -n $SMCP_PROJECT | jq -r '.status.ingress[0].host')
+export INGRESS_ROUTE_HOST=$(oc get route/istio-ingressgateway -o json -n ${SMCP_PROJECT} | jq -r '.status.ingress[0].host')
 
 cat << EOF | oc -n ${DEV_PROJECT} apply -f -
 apiVersion: networking.istio.io/v1alpha3
@@ -288,7 +283,7 @@ Now timeout is 1+ seconds... but you get a 504 error.
 
 ## Fix the service by setting delay to zero
 
-Set delay to 2000 (2s) more than Virtual Service timeout (1s) and less than the readiness probe timeout (3s)
+Set delay to 0 more than Virtual Service timeout (1s) and less than the readiness probe timeout (3s)
 
 ```sh
 curl http://${INGRESS_ROUTE_HOST}/setup/delay/0 && echo
