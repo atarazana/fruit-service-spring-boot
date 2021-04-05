@@ -76,6 +76,12 @@ oc label dc/jenkins app.openshift.io/runtime=jenkins --overwrite=true -n ${DEV_P
 
 ### DEPLOY WITH JKube
 
+If you want to run locally before you deploy the app run this.
+
+```sh
+mvn clean spring-boot:run -Dspring-boot.run.profiles=local -Plocal
+```
+
 ```sh
 oc project ${DEV_PROJECT}
 mvn clean oc:deploy -DskipTests -Popenshift-postgresql
