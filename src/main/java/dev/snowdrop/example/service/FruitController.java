@@ -69,7 +69,6 @@ public class FruitController {
     @PostMapping("/")
     public Fruit processCloudEvent(
         @RequestHeader("ce-id") String id,
-        @RequestHeader("ce-time") String time,
         @RequestHeader("ce-type") String type,
         @RequestHeader("ce-source") String source,
         @RequestHeader("ce-specversion") String specversion,
@@ -79,7 +78,6 @@ public class FruitController {
         @RequestBody(required = false) Fruit fruit) {
         
         System.out.println("ce-id=" + id);
-        System.out.println("ce-time=" + time);
         System.out.println("ce-type=" + type);
         System.out.println("ce-source=" + source);
         System.out.println("ce-specversion=" + specversion);
