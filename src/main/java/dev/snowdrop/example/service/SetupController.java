@@ -16,13 +16,16 @@
 
 package dev.snowdrop.example.service;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(value = "/setup")
+@RequestMapping(value = "/")
 public class SetupController {
 
     private static Integer DELAY_IN_MILLISECONDS = 0;
@@ -31,7 +34,20 @@ public class SetupController {
     public SetupController() {
     }
 
-    @GetMapping("/delay/{delayInMilliseconds}")
+    @PostMapping("/")
+    public  void processCloudEvent(HttpEntity<String> http) {
+        System.out.println("ce-id=" + http.getHeaders().get("ce-id"));
+        System.out.println("ce-source=" + http.getHeaders().get("ce-source"));
+        System.out.println("ce-specversion=" + http.getHeaders().get("ce-specversion"));
+        System.out.println("ce-time=" + http.getHeaders().get("ce-time"));
+        System.out.println("ce-type=" + http.getHeaders().get("ce-type"));
+        System.out.println("ce-user=" + http.getHeaders().get("ce-user"));
+        System.out.println("content-type=" + http.getHeaders().getContentType());
+        System.out.println("content-length=" + http.getHeaders().getContentLength());
+        System.out.println("POST:" + http.getBody());
+    }
+
+    @GetMapping("/setup/delay/{delayInMilliseconds}")
     public String delay(@PathVariable("delayInMilliseconds") Integer delayInMilliseconds) {
         if (delayInMilliseconds < 0 || delayInMilliseconds > 30*1000) {
             return "DELAY_IN_MILLISECONDS argument must be >= 0 and <= 30000";
@@ -41,21 +57,21 @@ public class SetupController {
         return "DELAY_IN_MILLISECONDS set to " + DELAY_IN_MILLISECONDS + " for " + System.getenv("HOSTNAME");
     }
 
-    @GetMapping("/fix/error")
+    @GetMapping("/setup/fix/error")
     public String fixError() {
         THROW_ERRORS = false;
 
         return "THROW_ERRORS set to false";
     }
 
-    @GetMapping("/fix/delay")
+    @GetMapping("/setup/fix/delay")
     public String fixDelay() {
         DELAY_IN_MILLISECONDS = 0;        
 
         return "DELAY_IN_MILLISECONDS fixed";
     }
 
-    @GetMapping("/error")
+    @GetMapping("/setup/error")
     public String error() {
         THROW_ERRORS = true;
 
