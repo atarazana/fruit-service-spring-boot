@@ -22,6 +22,7 @@ import dev.snowdrop.example.exception.UnsupportedMediaTypeException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,12 +30,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.view.RedirectView;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Spliterator;
 import java.util.concurrent.TimeUnit;
@@ -44,7 +48,7 @@ import java.util.stream.StreamSupport;
 import io.micrometer.core.instrument.Metrics;
 
 @RestController
-@RequestMapping(value = "/api/fruits")
+@RequestMapping(value = "/")
 public class FruitController {
 
     private static final String FORCED_INTERNAL_ERROR = "FORCED INTERNAL ERROR";
@@ -57,7 +61,37 @@ public class FruitController {
         this.repository = repository;
     }
 
-    @GetMapping("/{id}")
+    @RequestMapping(value = "/")
+    public RedirectView welcome() {
+        return new RedirectView("index.html");
+    }
+    
+    @PostMapping("/")
+    public Fruit processCloudEvent(
+        @RequestHeader("ce-id") String id,
+        @RequestHeader("ce-time") String time,
+        @RequestHeader("ce-type") String type,
+        @RequestHeader("ce-source") String source,
+        @RequestHeader("ce-specversion") String specversion,
+        @RequestHeader("ce-user") String user,
+        @RequestHeader("content-type") String contentType,
+        @RequestHeader("content-length") String contentLength,
+        @RequestBody(required = false) Fruit fruit) {
+        
+        System.out.println("ce-id=" + id);
+        System.out.println("ce-time=" + time);
+        System.out.println("ce-type=" + type);
+        System.out.println("ce-source=" + source);
+        System.out.println("ce-specversion=" + specversion);
+    
+        System.out.println("ce-user=" +user);
+        System.out.println("content-type=" + contentType);
+        System.out.println("content-length=" + contentLength);
+        
+        return post(fruit);
+    }
+
+    @GetMapping("/api/fruits/{id}")
     public Fruit get(@PathVariable("id") Integer id) {
         if (checkThrowErrors()) {
             throwInternalServerError();
@@ -74,7 +108,7 @@ public class FruitController {
         return repository.findById(id).get();
     }
 
-    @GetMapping
+    @GetMapping("/api/fruits")
     public List<Fruit> getAll() {
         if (checkThrowErrors()) {
             throwInternalServerError();
@@ -95,7 +129,7 @@ public class FruitController {
     }
 
     @ResponseStatus(HttpStatus.CREATED)
-    @PostMapping
+    @PostMapping("/api/fruits")
     public Fruit post(@RequestBody(required = false) Fruit fruit) {
         if (checkThrowErrors()) {
             throwInternalServerError();
@@ -109,7 +143,7 @@ public class FruitController {
     }
 
     @ResponseStatus(HttpStatus.OK)
-    @PutMapping("/{id}")
+    @PutMapping("/api/fruits/{id}")
     public Fruit put(@PathVariable("id") Integer id, @RequestBody(required = false) Fruit fruit) {
         if (checkThrowErrors()) {
             throwInternalServerError();
@@ -126,7 +160,7 @@ public class FruitController {
     }
 
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/api/fruits/{id}")
     public void delete(@PathVariable("id") Integer id) {
         if (checkThrowErrors()) {
             throwInternalServerError();
