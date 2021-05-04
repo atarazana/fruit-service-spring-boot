@@ -11,7 +11,10 @@ spec:
   template:
     spec:
       containers:
-        - env:
+        - envFrom:
+            - secretRef:
+              name: ${project.artifactId}-${db.type}-db
+          env:
             - name: SERVICE_DB_USER
               valueFrom:
                 secretKeyRef:
