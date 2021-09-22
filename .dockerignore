@@ -1,0 +1,6 @@
+*.md
+images/
+old/
+upload/
+downloads/
+.vscode/
