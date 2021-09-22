@@ -39,10 +39,10 @@ oc label dc/postgresql-db app.openshift.io/runtime=postgresql --overwrite=true -
     Name: fruit-service-git <===
     Check Deployment <===
     Click on Deployment to add env variables
-    - SERVICE_DB_HOST: postgresql-db
-    - SERVICE_DB_USER from secret postgresql-db...
-    - SERVICE_DB_PASSWORD from secret postgresql-db...
-    - SERVICE_DB_NAME from secret postgresql-db...
+    - DB_HOST: postgresql-db
+    - DB_USER from secret postgresql-db...
+    - DB_PASSWORD from secret postgresql-db...
+    - DB_NAME from secret postgresql-db...
     - JAVA_OPTIONS: -Dspring.profiles.active=openshift-postgresql
     Click on BuildConfig <=== We need to do this because we have two different openshift profiles for oracle and postgresql
     - MAVEN_ARGS: -Popenshift-postgresql
@@ -87,9 +87,9 @@ oc project ${DEV_PROJECT}
 mvn clean oc:deploy -DskipTests -Popenshift-postgresql
 ```
 
-#oc label dc/fruit-service-dev app.kubernetes.io/part-of=fruit-service-app --overwrite=true -n ${DEV_PROJECT} && \
-#oc label dc/fruit-service-dev app.openshift.io/runtime=spring --overwrite=true -n ${DEV_PROJECT} && \
-#oc annotate dc/fruit-service-dev app.openshift.io/connects-to=postgresql-db --overwrite=true -n ${DEV_PROJECT} 
+Activating monitoring is automatic for this project, but don't forget to:
+- change port name in svc/fruit-service to http
+- change the targetPort to http
 
 ## COMPLETE PIPELINE
 
@@ -127,9 +127,6 @@ oc policy add-role-to-user edit system:serviceaccount:${DEV_PROJECT}:jenkins -n 
 oc policy add-role-to-user view system:serviceaccount:${DEV_PROJECT}:jenkins -n ${TEST_PROJECT} && \
 oc policy add-role-to-user system:image-puller system:serviceaccount:${TEST_PROJECT}:default -n ${DEV_PROJECT}
 ```
-
-#oc policy add-role-to-user edit system:serviceaccount:${DEV_PROJECT}:jenkins -n ${DEV_PROJECT} && \
-#oc policy add-role-to-user view system:serviceaccount:${DEV_PROJECT}:jenkins -n ${DEV_PROJECT}
 
 ### CREATE PIPELINE
 
@@ -175,29 +172,6 @@ oc start-build bc/fruit-service-pipeline-complex \
   --env=MAVEN_OPTS="${MAVEN_OPTS}" \
   -n ${DEV_PROJECT}
 ```
-
-# KNative
-
-x.1 Add -> From Git
-    Git Repo URL: https://github.com/atarazana/fruit-service-spring-boot
-    Java 11
-    General Application: fruit-service-app 
-    Name: fruit-service-kn <===
-    Check Knative Service <===
-    Click on Deployment to add env variables
-    - SERVICE_DB_HOST: postgresql-db
-    - SERVICE_DB_USER from secret postgresql-db...
-    - SERVICE_DB_PASSWORD from secret postgresql-db...
-    - SERVICE_DB_NAME from secret postgresql-db...
-    - JAVA_OPTIONS: -Dspring.profiles.active=openshift-postgresql
-    Click on BuildConfig <=== We need to do this because we have two different openshift profiles for oracle and postgresql
-    - MAVEN_ARGS: -Popenshift-postgresql
-    Click on labels
-    - app=fruit-service-kn
-    - version=1.0.0
-
-oc label ksvc/fruit-service-kn app.openshift.io/runtime=spring --overwrite=true -n ${DEV_PROJECT} && \
-oc annotate ksvc/fruit-service-kn app.openshift.io/connects-to=postgresql-db --overwrite=true -n ${DEV_PROJECT}
 
 # Troubleshooting Pipelines
 

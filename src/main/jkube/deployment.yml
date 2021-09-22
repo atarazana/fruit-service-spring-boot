@@ -11,10 +11,7 @@ spec:
   template:
     spec:
       containers:
-        - envFrom:
-            - secretRef:
-              name: ${project.artifactId}-${db.type}-db
-          env:
+        - env:
             - name: SERVICE_DB_USER
               valueFrom:
                 secretKeyRef:
@@ -40,3 +37,6 @@ spec:
                 configMapKeyRef:
                   name: ${project.artifactId}-${db.type}-configmap
                   key: java-options
+          envFrom:
+          - secretRef:
+              name: ${project.artifactId}-${db.type}-db
