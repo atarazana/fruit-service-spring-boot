@@ -1,0 +1,125 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: fruit-service-kn-v2
+  labels:
+    pipeline.openshift.io/runtime: java 
+    pipeline.openshift.io/type: knative 
+spec:
+  description: >-
+    The Pipeline to build and deploy the Fruit Service example <a href="https://github.com/atarazana/fruit-service-spring-boot</a> as Knative Service.
+  params:
+    - name: IMAGE_NAME
+      description: >-
+        The fully qualified image name
+      default: image-registry.openshift-image-registry.svc:5000/<project>/fruit-service-kn-v2
+    - name: APP_PROFILE
+      description: >-
+        The application profile to use for building the application. In this example it should be either:
+          * openshift-postgresql
+          * openshift-oracle
+    - name: APP_NAME 
+      description: The Knative Service name
+    - name: GITHUB_REPO_URL
+      description: The GitHub Repo of the Java Application
+      default: https://github.com/atarazana/fruit-service-spring-boot
+    - name: GITHUB_REPO_REVISION
+      description: The GitHub revision to use
+      default: main
+    - name: DB_SECRET_NAME
+      type: string
+    - name: DB_HOST
+      type: string
+  workspaces:
+    - name: source
+    - name: maven-settings
+  tasks:
+    - name: clone-sources
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+      params:
+        - name: url
+          value: $(params.GITHUB_REPO_URL)
+        - name: revision
+          value: $(params.GITHUB_REPO_REVISION)
+        # just to do a fresh clone, as we already have the directory cloned
+        # to reuse it we can exlude this step
+        - name: deleteExisting
+          value: 'true'
+      workspaces:
+        - name: output
+          workspace: source
+    - name: build-java-test
+      taskRef:
+        name: maven
+        kind: ClusterTask
+      runAfter:
+        - clone-sources
+      params:
+        - name: GOALS
+          value:
+            - '-P$(params.APP_PROFILE)'
+            - clean
+            - test
+      workspaces:
+        - name: maven-settings
+          workspace: maven-settings
+        - name: source
+          workspace: source
+    - name: build-java-app
+      taskRef:
+        name: maven
+        kind: ClusterTask
+      runAfter:
+        - build-java-test
+      params:
+        - name: GOALS
+          value:
+            - '-P$(params.APP_PROFILE)'
+            - '-DskipTests'
+            - clean
+            - package
+      workspaces:
+        - name: maven-settings
+          workspace: maven-settings
+        - name: source
+          workspace: source
+    - name: build-java-app-image
+      taskRef:
+        name: buildah
+        kind: ClusterTask
+      runAfter:
+        - build-java-app
+      params:
+        - name: CONTEXT
+          value: '$(params.APP_PROFILE)'
+        - name: IMAGE
+          value: '$(params.IMAGE_NAME)'
+        # since pushing to internal registry we skip TLS verify
+        - name: TLSVERIFY
+          value: 'false'
+      workspaces:
+        - name: source
+          workspace: source
+    - name: deploy-kn-service
+      taskRef:
+        name: kn
+        kind: ClusterTask
+      runAfter:
+        - build-java-app-image
+      params:
+        - name: ARGS
+          value:
+            - service
+            - create
+            - $(params.APP_NAME)
+            - '--env'
+            - 'JAVA_OPTIONS=-Dspring.profiles.active=$(params.APP_PROFILE)'
+            - '--env'
+            - 'DB_HOST=$(params.DB_HOST)'
+            - '--env-from'
+            - 'secret:$(params.DB_SECRET_NAME)'
+            - '--force'
+            - '--image=$(params.IMAGE_NAME)@$(tasks.build-java-app-image.results.IMAGE_DIGEST)' 

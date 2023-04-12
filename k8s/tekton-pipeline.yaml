@@ -1,0 +1,128 @@
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: fruit-service-kn-plr
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    app: fruit-service
+    provider: jkube
+    version: 1.0.0
+    group: dev.snowdrop.example
+  name: fruit-service-postgresql-db
+stringData:
+  DB_USER: luke
+  DB_PASSWORD: secret
+  DB_NAME: FRUITSDB
+  DB_HOST: postgresql-db
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: fruit-service-kn
+  labels:
+    app.kubernetes.io/instance: fruit-service-kn
+    pipeline.openshift.io/runtime: spring-boot
+    pipeline.openshift.io/type: knative
+spec:
+  params:
+    - name: APP_NAME
+      type: string
+      default: fruit-service-kn
+    - name: GIT_REPO
+      type: string
+      default: 'https://github.com/atarazana/fruit-service-spring-boot'
+    - name: GIT_REVISION
+      type: string
+      default: main
+    - name: IMAGE_NAME
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/<project>/fruit-service-kn
+    - name: PATH_CONTEXT
+      type: string
+      default: .
+    - name: MAVEN_ARGS
+      type: string
+      default: '-Dmaven.repo.local=. -Popenshift-postgresql'
+    - name: MAVEN_ARGS_APPEND
+      type: string
+      default: ' '
+    - name: SPRING_PROFILE
+      type: string
+      default: openshift-postgresql
+    - name: DB_SECRET_NAME
+      type: string
+      default: fruit-service-postgresql-db
+    - name: DB_HOST
+      type: string
+      default: postgresql-db
+    - name: REVISION_NAME
+      type: string
+  tasks:
+    - name: fetch-repository
+      params:
+        - name: url
+          value: $(params.GIT_REPO)
+        - name: revision
+          value: $(params.GIT_REVISION)
+        - name: deleteExisting
+          value: 'true'
+      taskRef:
+        kind: ClusterTask
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: workspace
+    - name: build
+      params:
+        - name: IMAGE
+          value: $(params.IMAGE_NAME)
+        - name: TLSVERIFY
+          value: 'false'
+        - name: PATH_CONTEXT
+          value: $(params.PATH_CONTEXT)
+        - name: MAVEN_ARGS
+          value: '$(params.MAVEN_ARGS)'
+        - name: MAVEN_ARGS_APPEND
+          value: '$(params.MAVEN_ARGS_APPEND)'
+      runAfter:
+        - fetch-repository
+      taskRef:
+        kind: ClusterTask
+        name: s2i-java-custom
+      workspaces:
+        - name: source
+          workspace: workspace
+    - name: kn-service-create
+      params:
+        - name: ARGS
+          value:
+            - service
+            - create
+            - $(params.APP_NAME)
+            - '--image=$(params.IMAGE_NAME)'
+            - '--env'
+            - 'JAVA_OPTIONS=-Dspring.profiles.active=$(params.SPRING_PROFILE)'
+            - '--env'
+            - 'DB_HOST=$(params.DB_HOST)'
+            - '--env-from'
+            - 'secret:$(params.DB_SECRET_NAME)'
+            - '--revision-name'
+            - '{{.Service}}-$(params.REVISION_NAME)'
+            - '--force'
+      runAfter:
+        - build
+      taskRef:
+        kind: ClusterTask
+        name: kn
+  workspaces:
+    - name: workspace
